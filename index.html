@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LEGO Minifig Collection Tracker</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, system-ui, sans-serif;
+        background: #f7f8fb;
+        color: #111827;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      .page {
+        max-width: 1024px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: clamp(1.8rem, 2.6vw, 2.8rem);
+      }
+
+      .panel {
+        margin-top: 24px;
+        padding: 20px;
+        border-radius: 20px;
+        background: #ffffff;
+        box-shadow: 0 30px 60px rgba(15, 23, 42, 0.08);
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .row input,
+      .row button,
+      .row select {
+        border: 1px solid #d1d5db;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 1rem;
+        outline: none;
+      }
+
+      .row input:focus,
+      .row button:focus,
+      .row select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+      }
+
+      .row button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      .row button[disabled] {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .status {
+        margin-top: 12px;
+        color: #475569;
+      }
+
+      .grid {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      }
+
+      .card {
+        background: #f9fafb;
+        border-radius: 18px;
+        border: 1px solid #e2e8f0;
+        padding: 18px;
+      }
+
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 1.1rem;
+      }
+
+      .actions {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .card small {
+        display: block;
+        margin-top: 6px;
+        color: #64748b;
+      }
+
+      .minifig-image {
+        width: 100%;
+        max-height: 160px;
+        object-fit: contain;
+        border-radius: 14px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+      }
+
+      .collection-list {
+        margin-top: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .collection-list li {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 14px;
+        align-items: center;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        margin-bottom: 12px;
+      }
+
+      .collection-item-img,
+      .minifig-image {
+        width: 88px;
+        height: 88px;
+        object-fit: contain;
+        border-radius: 14px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+      }
+
+      .collection-list li strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #e0f2fe;
+        color: #0369a1;
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 640px) {
+        .row {
+          flex-direction: column;
+          align-items: stretch;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div>
+          <h1>LEGO Minifig Collection Tracker</h1>
+          <p>Search Rebrickable minifigs and track which set they come from.</p>
+        </div>
+      </header>
+
+      <section class="panel">
+        <div class="row">
+          <input id="apiKey" type="password" placeholder="Enter Rebrickable API key" autocomplete="off" />
+          <button id="pasteKeyButton" type="button">Paste API Key</button>
+          <button id="saveKeyButton">Save API Key</button>
+        </div>
+        <p class="status" id="keyStatus">Your API key is stored locally in this browser.</p>
+      </section>
+
+      <section class="panel">
+        <div class="row">
+          <input id="searchInput" type="search" placeholder="Search minifigs by name" />
+          <button id="searchButton">Search</button>
+        </div>
+        <p class="status" id="searchStatus">Search for a minifig by name, then add it to your collection.</p>
+      </section>
+
+      <section class="grid" id="mainGrid">
+        <div class="card" id="resultsCard">
+          <h2>Search Results</h2>
+          <div id="resultsContainer"></div>
+        </div>
+
+        <div class="card">
+          <h2>Your Collection</h2>
+          <ul class="collection-list" id="collectionList"></ul>
+          <p class="status" id="collectionStatus">No minifigs tracked yet.</p>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const apiKeyInput = document.getElementById('apiKey');
+      const saveKeyButton = document.getElementById('saveKeyButton');
+      const searchInput = document.getElementById('searchInput');
+      const searchButton = document.getElementById('searchButton');
+      const resultsContainer = document.getElementById('resultsContainer');
+      const collectionList = document.getElementById('collectionList');
+      const collectionStatus = document.getElementById('collectionStatus');
+      const searchStatus = document.getElementById('searchStatus');
+      const keyStatus = document.getElementById('keyStatus');
+      const STORAGE_KEY = 'legoMinifigTracker';
+      const STORAGE_API_KEY = 'rebrickableApiKey';
+
+      let collection = [];
+      let apiKey = '';
+
+      function loadState() {
+        apiKey = localStorage.getItem(STORAGE_API_KEY) || '';
+        if (apiKey) {
+          apiKeyInput.value = apiKey;
+          keyStatus.textContent = 'API key loaded. Search and add minifigs.';
+        } else {
+          keyStatus.textContent = 'Please enter your Rebrickable API key to use the search feature.';
+        }
+
+        const saved = localStorage.getItem(STORAGE_KEY);
+        collection = saved ? JSON.parse(saved) : [];
+        renderCollection();
+        // Background: if any saved entries lack a setYear, try to fetch it.
+        (async () => {
+          if (!apiKey) return;
+          let changed = false;
+          for (let i = 0; i < collection.length; i++) {
+            const e = collection[i];
+            if (!e.setYear) {
+              try {
+                const sets = await fetchMinifigSets(e.set_num);
+                const first = sets.results?.[0];
+                let year = first?.year || null;
+                if (!year && first?.set_num) {
+                  const detail = await fetchSetDetail(first.set_num);
+                  year = detail?.year || null;
+                }
+                if (year) {
+                  e.setYear = year;
+                  changed = true;
+                }
+              } catch (_) {
+                // ignore
+              }
+            }
+          }
+          if (changed) {
+            saveCollection();
+            renderCollection();
+          }
+        })();
+      }
+
+      function saveApiKey() {
+        apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+          keyStatus.textContent = 'Enter a valid API key before saving.';
+          return;
+        }
+        localStorage.setItem(STORAGE_API_KEY, apiKey);
+        keyStatus.textContent = 'API key saved and ready to use.';
+      }
+
+      function saveCollection() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
+      }
+
+      function renderCollection() {
+        collectionList.innerHTML = '';
+        if (collection.length === 0) {
+          collectionStatus.textContent = 'No minifigs tracked yet. Add one from search results.';
+          return;
+        }
+
+        collectionStatus.textContent = `${collection.length} tracked minifig${collection.length === 1 ? '' : 's'}.`;
+        collection.forEach((entry, index) => {
+          const li = document.createElement('li');
+
+          if (entry.imageUrl) {
+            const image = document.createElement('img');
+            image.src = entry.imageUrl;
+            image.alt = entry.name;
+            image.className = 'collection-item-img';
+            li.appendChild(image);
+          }
+
+          const details = document.createElement('div');
+          const title = document.createElement('strong');
+          title.textContent = `${entry.name} (${entry.set_num})`;
+          details.appendChild(title);
+
+          const setLink = document.createElement('a');
+          setLink.href = entry.detailUrl || '#';
+          setLink.target = '_blank';
+          setLink.rel = 'noopener';
+          setLink.textContent = entry.setName || 'Unknown set';
+          details.appendChild(setLink);
+
+          const yearSmall = document.createElement('small');
+          yearSmall.textContent = `Year: ${entry.setYear || 'N/A'}`;
+          details.appendChild(yearSmall);
+
+          const setBadge = document.createElement('div');
+          setBadge.className = 'badge';
+          const setBadgeLink = document.createElement('a');
+          setBadgeLink.href = entry.detailUrl || '#';
+          setBadgeLink.target = '_blank';
+          setBadgeLink.rel = 'noopener';
+          setBadgeLink.textContent = `From ${entry.setName || 'set'}`;
+          setBadge.appendChild(setBadgeLink);
+          details.appendChild(setBadge);
+
+          li.appendChild(details);
+
+          const removeButton = document.createElement('button');
+          removeButton.textContent = 'Remove';
+          removeButton.addEventListener('click', () => {
+            collection.splice(index, 1);
+            saveCollection();
+            renderCollection();
+          });
+          li.appendChild(removeButton);
+          collectionList.appendChild(li);
+        });
+      }
+
+      function getHeaders() {
+        return {
+          Authorization: `key ${apiKey}`,
+          'Content-Type': 'application/json',
+        };
+      }
+
+      async function fetchMinifigs(query) {
+        if (!apiKey) {
+          throw new Error('API key is required. Save it first.');
+        }
+        const url = new URL('https://rebrickable.com/api/v3/lego/minifigs/');
+        url.searchParams.set('search', query);
+        url.searchParams.set('page_size', '30');
+
+        const response = await fetch(url.toString(), {
+          headers: getHeaders(),
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => null);
+          throw new Error(error?.detail || response.statusText || 'Search failed.');
+        }
+        return response.json();
+      }
+
+      async function fetchMinifigSets(setNum) {
+        if (!apiKey) {
+          throw new Error('API key is required. Save it first.');
+        }
+        const url = new URL(`https://rebrickable.com/api/v3/lego/minifigs/${encodeURIComponent(setNum)}/sets/`);
+        url.searchParams.set('page_size', '20');
+
+        const response = await fetch(url.toString(), {
+          headers: getHeaders(),
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => null);
+          throw new Error(error?.detail || response.statusText || 'Failed to load sets.');
+        }
+        return response.json();
+      }
+
+      async function fetchSetDetail(setNum) {
+        if (!apiKey) throw new Error('API key is required. Save it first.');
+        const url = new URL(`https://rebrickable.com/api/v3/lego/sets/${encodeURIComponent(setNum)}/`);
+        const response = await fetch(url.toString(), { headers: getHeaders() });
+        if (!response.ok) {
+          return null;
+        }
+        return response.json();
+      }
+
+      function createResultCard(minifig) {
+        const container = document.createElement('div');
+        container.className = 'card';
+
+        const heading = document.createElement('h2');
+        const headingLink = document.createElement('a');
+        headingLink.href = `https://rebrickable.com/minifigs/${minifig.set_num}/`;
+        headingLink.target = '_blank';
+        headingLink.rel = 'noopener';
+        headingLink.textContent = `${minifig.name} (${minifig.set_num})`;
+        heading.appendChild(headingLink);
+        container.appendChild(heading);
+
+        if (minifig.set_img_url) {
+          const img = document.createElement('img');
+          img.src = minifig.set_img_url;
+          img.alt = minifig.name;
+          img.className = 'minifig-image';
+          container.appendChild(img);
+        }
+
+        const year = document.createElement('small');
+        year.textContent = `Year: ${minifig.year || 'N/A'}`;
+        container.appendChild(year);
+
+        // Try to fetch set info to get a more accurate year (falls back to minifig.year)
+        (async () => {
+          try {
+            const sets = await fetchMinifigSets(minifig.set_num);
+            const first = sets.results?.[0];
+            if (first) {
+              if (first.year) {
+                year.textContent = `Year: ${first.year}`;
+              } else if (first.set_num) {
+                const detail = await fetchSetDetail(first.set_num);
+                if (detail?.year) {
+                  year.textContent = `Year: ${detail.year}`;
+                }
+              }
+            }
+          } catch (e) {
+            // ignore errors (rate limits or missing key)
+          }
+        })();
+
+        const button = document.createElement('button');
+        button.textContent = 'Add to collection';
+        button.addEventListener('click', async () => {
+          button.disabled = true;
+          button.textContent = 'Adding...';
+          try {
+            const setsData = await fetchMinifigSets(minifig.set_num);
+            const firstSet = setsData.results?.[0];
+            const setName = firstSet?.name || 'Unknown set';
+            let setYear = firstSet?.year || minif.year || null;
+            if (!setYear && firstSet?.set_num) {
+              const detail = await fetchSetDetail(firstSet.set_num);
+              setYear = detail?.year || setYear;
+            }
+            collection.push({
+              set_num: minif.set_num,
+              name: minif.name,
+              setName,
+              setYear,
+              imageUrl: minif.set_img_url || '',
+              detailUrl: `https://rebrickable.com/minifigs/${minif.set_num}/`,
+            });
+            saveCollection();
+            renderCollection();
+            searchStatus.textContent = `${minifig.name} added with set "${setName}".`;
+          } catch (error) {
+            searchStatus.textContent = error.message;
+          } finally {
+            button.disabled = false;
+            button.textContent = 'Add to collection';
+          }
+        });
+        container.appendChild(button);
+
+        return container;
+      }
+
+      async function performSearch() {
+        const query = searchInput.value.trim();
+        resultsContainer.innerHTML = '';
+        if (!query) {
+          searchStatus.textContent = 'Type a name or keyword to search minifigs.';
+          return;
+        }
+
+        searchStatus.textContent = 'Searching Rebrickable...';
+        try {
+          const data = await fetchMinifigs(query);
+          if (!data.results || data.results.length === 0) {
+            searchStatus.textContent = 'No minifigs found. Try a different name.';
+            return;
+          }
+          resultsContainer.innerHTML = '';
+          data.results.forEach((minifig) => {
+            resultsContainer.appendChild(createResultCard(minifig));
+          });
+          searchStatus.textContent = `Found ${data.count} minifig${data.count === 1 ? '' : 's'}.`;
+        } catch (error) {
+          searchStatus.textContent = error.message;
+        }
+      }
+
+      const pasteKeyButton = document.getElementById('pasteKeyButton');
+
+      async function pasteApiKey() {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (!text) {
+            keyStatus.textContent = 'Clipboard is empty. Copy your key first.';
+            return;
+          }
+          apiKeyInput.value = text.trim();
+          keyStatus.textContent = 'API key pasted from clipboard. Click Save API Key.';
+        } catch (error) {
+          keyStatus.textContent = 'Unable to read clipboard. Paste manually if needed.';
+        }
+      }
+
+      saveKeyButton.addEventListener('click', saveApiKey);
+      pasteKeyButton.addEventListener('click', pasteApiKey);
+      searchButton.addEventListener('click', performSearch);
+      searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          performSearch();
+        }
+      });
+
+      loadState();
+    </script>
+  </body>
+</html>
