@@ -61,7 +61,7 @@
       .row input,
       .row button,
       .row select {
-        border: 1px solid ;
+        border: 1px solid #d1d5db;
         border-radius: 12px;
         padding: 12px 14px;
         font-size: 1rem;
@@ -96,6 +96,7 @@
         display: grid;
         gap: 20px;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        margin-top: 24px;
       }
 
       .card {
@@ -462,18 +463,18 @@
             const setsData = await fetchMinifigSets(minifig.set_num);
             const firstSet = setsData.results?.[0];
             const setName = firstSet?.name || 'Unknown set';
-            let setYear = firstSet?.year || minif.year || null;
+            let setYear = firstSet?.year || minifig.year || null;
             if (!setYear && firstSet?.set_num) {
               const detail = await fetchSetDetail(firstSet.set_num);
               setYear = detail?.year || setYear;
             }
             collection.push({
-              set_num: minif.set_num,
-              name: minif.name,
+              set_num: minifig.set_num,
+              name: minifig.name,
               setName,
               setYear,
-              imageUrl: minif.set_img_url || '',
-              detailUrl: `https://rebrickable.com/minifigs/${minif.set_num}/`,
+              imageUrl: minifig.set_img_url || '',
+              detailUrl: `https://rebrickable.com/minifigs/${minifig.set_num}/`,
             });
             saveCollection();
             renderCollection();

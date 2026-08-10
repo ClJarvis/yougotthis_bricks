@@ -1,0 +1,6 @@
+.DS_Store
+chat-export.md
+*.key
+*.pem
+*.env
+.env*
