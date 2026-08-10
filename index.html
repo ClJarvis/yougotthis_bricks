@@ -8,8 +8,11 @@
       :root {
         color-scheme: light;
         font-family: Inter, system-ui, sans-serif;
-        background: #f7f8fb;
+        background: #e58b33;
         color: #111827;
+        --Yellow_accent: #e58b33;
+        --Green_accent: #617764;
+        --DkOrange_accent: #b44b1e;
       }
 
       * {
@@ -58,7 +61,7 @@
       .row input,
       .row button,
       .row select {
-        border: 1px solid #d1d5db;
+        border: 1px solid ;
         border-radius: 12px;
         padding: 12px 14px;
         font-size: 1rem;
@@ -98,7 +101,7 @@
       .card {
         background: #f9fafb;
         border-radius: 18px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--DkOrange_accent);
         padding: 18px;
       }
 
@@ -126,7 +129,7 @@
         object-fit: contain;
         border-radius: 14px;
         background: #fff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--DkOrange_accent);
       }
 
       .collection-list {
@@ -142,8 +145,8 @@
         align-items: center;
         padding: 14px 16px;
         border-radius: 14px;
-        border: 1px solid #e2e8f0;
-        background: #fff;
+        border: 1px solid var(--DkOrange_accent);
+        background: var(--Green_accent);
         margin-bottom: 12px;
       }
 
@@ -154,7 +157,7 @@
         object-fit: contain;
         border-radius: 14px;
         background: #fff;
-        border: 1px solid #e2e8f0;
+        border: 2px solid var(--DkOrange_accent);
       }
 
       .collection-list li strong {
