@@ -1,5 +1,7 @@
-README
+## LEGO Inventory App
 
-##LEGO Inventory App
+LEGO MiniFig Inventory app.
 
-LEGO MiniFig Inventory app
++ Will diplay image of figures, allow to track quanities.
++ JavaScript, CSS, Co-pilot
++ API
