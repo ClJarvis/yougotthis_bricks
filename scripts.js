@@ -1,5 +1,3 @@
-const apiKeyInput = document.getElementById('apiKey');
-const saveKeyButton = document.getElementById('saveKeyButton');
 const searchInput = document.getElementById('searchInput');
 const searchButton = document.getElementById('searchButton');
 const resultsContainer = document.getElementById('resultsContainer');
@@ -8,19 +6,11 @@ const collectionStatus = document.getElementById('collectionStatus');
 const searchStatus = document.getElementById('searchStatus');
 const keyStatus = document.getElementById('keyStatus');
 const STORAGE_KEY = 'legoMinifigTracker';
-const STORAGE_API_KEY = 'rebrickableApiKey';
 
 let collection = [];
-let apiKey = '';
 
 function loadState() {
-  apiKey = localStorage.getItem(STORAGE_API_KEY) || '';
-  if (apiKey) {
-    apiKeyInput.value = apiKey;
-    keyStatus.textContent = 'API key loaded. Search and add minifigs.';
-  } else {
-    keyStatus.textContent = 'Please enter your Rebrickable API key to use the search feature.';
-  }
+  keyStatus.textContent = 'API key is stored on the server, not in the browser.';
 
   const saved = localStorage.getItem(STORAGE_KEY);
   collection = saved ? JSON.parse(saved) : [];
@@ -31,7 +21,6 @@ function loadState() {
   renderCollection();
 
   (async () => {
-    if (!apiKey) return;
     let changed = false;
     for (let i = 0; i < collection.length; i++) {
       const e = collection[i];
@@ -58,16 +47,6 @@ function loadState() {
       renderCollection();
     }
   })();
-}
-
-function saveApiKey() {
-  apiKey = apiKeyInput.value.trim();
-  if (!apiKey) {
-    keyStatus.textContent = 'Enter a valid API key before saving.';
-    return;
-  }
-  localStorage.setItem(STORAGE_API_KEY, apiKey);
-  keyStatus.textContent = 'API key saved and ready to use.';
 }
 
 function saveCollection() {
@@ -184,56 +163,25 @@ function renderCollection() {
   });
 }
 
-function getHeaders() {
-  return {
-    Authorization: `key ${apiKey}`,
-    'Content-Type': 'application/json',
-  };
+async function fetchJson(url) {
+  const response = await fetch(url);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || data?.detail || response.statusText || 'Request failed.');
+  }
+  return data;
 }
 
 async function fetchMinifigs(query) {
-  if (!apiKey) {
-    throw new Error('API key is required. Save it first.');
-  }
-  const url = new URL('https://rebrickable.com/api/v3/lego/minifigs/');
-  url.searchParams.set('search', query);
-  url.searchParams.set('page_size', '30');
-
-  const response = await fetch(url.toString(), {
-    headers: getHeaders(),
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.detail || response.statusText || 'Search failed.');
-  }
-  return response.json();
+  return fetchJson(`/api/minifigs?search=${encodeURIComponent(query)}`);
 }
 
 async function fetchMinifigSets(setNum) {
-  if (!apiKey) {
-    throw new Error('API key is required. Save it first.');
-  }
-  const url = new URL(`https://rebrickable.com/api/v3/lego/minifigs/${encodeURIComponent(setNum)}/sets/`);
-  url.searchParams.set('page_size', '20');
-
-  const response = await fetch(url.toString(), {
-    headers: getHeaders(),
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.detail || response.statusText || 'Failed to load sets.');
-  }
-  return response.json();
+  return fetchJson(`/api/minifig-sets/${encodeURIComponent(setNum)}`);
 }
 
 async function fetchSetDetail(setNum) {
-  if (!apiKey) throw new Error('API key is required. Save it first.');
-  const url = new URL(`https://rebrickable.com/api/v3/lego/sets/${encodeURIComponent(setNum)}/`);
-  const response = await fetch(url.toString(), { headers: getHeaders() });
-  if (!response.ok) {
-    return null;
-  }
-  return response.json();
+  return fetchJson(`/api/set-detail/${encodeURIComponent(setNum)}`);
 }
 
 function createResultCard(minifig) {
@@ -355,24 +303,6 @@ async function performSearch() {
   }
 }
 
-const pasteKeyButton = document.getElementById('pasteKeyButton');
-
-async function pasteApiKey() {
-  try {
-    const text = await navigator.clipboard.readText();
-    if (!text) {
-      keyStatus.textContent = 'Clipboard is empty. Copy your key first.';
-      return;
-    }
-    apiKeyInput.value = text.trim();
-    keyStatus.textContent = 'API key pasted from clipboard. Click Save API Key.';
-  } catch (error) {
-    keyStatus.textContent = 'Unable to read clipboard. Paste manually if needed.';
-  }
-}
-
-saveKeyButton.addEventListener('click', saveApiKey);
-pasteKeyButton.addEventListener('click', pasteApiKey);
 searchButton.addEventListener('click', performSearch);
 searchInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
