@@ -4,3 +4,4 @@ chat-export.md
 *.pem
 *.env
 .env*
+node_modules/
