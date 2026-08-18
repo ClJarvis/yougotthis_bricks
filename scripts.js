@@ -6,8 +6,15 @@ const collectionStatus = document.getElementById('collectionStatus');
 const searchStatus = document.getElementById('searchStatus');
 const keyStatus = document.getElementById('keyStatus');
 const STORAGE_KEY = 'legoMinifigTracker';
+const RESULTS_PER_PAGE = 25;
 
 let collection = [];
+let searchState = {
+  query: '',
+  currentPage: 1,
+  totalCount: 0,
+  results: [],
+};
 
 function loadState() {
   keyStatus.textContent = 'API key is stored on the server, not in the browser.';
@@ -286,18 +293,56 @@ async function performSearch() {
     return;
   }
 
+  searchState = {
+    query,
+    currentPage: 1,
+    totalCount: 0,
+    results: [],
+  };
+
+  await loadSearchPage(1);
+}
+
+async function loadSearchPage(page) {
   searchStatus.textContent = 'Searching Rebrickable...';
   try {
-    const data = await fetchMinifigs(query);
+    const data = await fetchJson(`/api/minifigs?search=${encodeURIComponent(searchState.query)}&page=${page}&page_size=${RESULTS_PER_PAGE}`);
     if (!data.results || data.results.length === 0) {
-      searchStatus.textContent = 'No minifigs found. Try a different name.';
+      if (page === 1) {
+        searchStatus.textContent = 'No minifigs found. Try a different name.';
+      }
       return;
     }
-    resultsContainer.innerHTML = '';
+
+    searchState.totalCount = data.count;
+    searchState.currentPage = page;
+
+    if (page === 1) {
+      resultsContainer.innerHTML = '';
+    }
+
     data.results.forEach((minifig) => {
       resultsContainer.appendChild(createResultCard(minifig));
     });
-    searchStatus.textContent = `Found ${data.count} minifig${data.count === 1 ? '' : 's'}.`;
+
+    const startNum = (page - 1) * RESULTS_PER_PAGE + 1;
+    const endNum = Math.min(page * RESULTS_PER_PAGE, searchState.totalCount);
+    searchStatus.textContent = `Found ${searchState.totalCount} total. Showing ${startNum}–${endNum}.`;
+
+    if (endNum < searchState.totalCount) {
+      const loadMoreBtn = document.createElement('button');
+      loadMoreBtn.textContent = 'Load More';
+      loadMoreBtn.style.marginTop = '16px';
+      loadMoreBtn.style.padding = '12px 20px';
+      loadMoreBtn.addEventListener('click', () => {
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.textContent = 'Loading...';
+        loadSearchPage(page + 1).then(() => {
+          loadMoreBtn.remove();
+        });
+      });
+      resultsContainer.appendChild(loadMoreBtn);
+    }
   } catch (error) {
     searchStatus.textContent = error.message;
   }
